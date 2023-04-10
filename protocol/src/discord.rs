@@ -1,10 +1,10 @@
-use serenity::{async_trait, Client};
-use serenity::prelude::{Context, EventHandler, GatewayIntents, TypeMapKey};
+use crate::constant;
+use async_channel::{Receiver, Sender};
 use color_eyre::Result;
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::Message;
-use async_channel::{Receiver, Sender};
-use crate::constant;
+use serenity::prelude::{Context, EventHandler, GatewayIntents, TypeMapKey};
+use serenity::{async_trait, Client};
 
 constant!(PACKET_CONNECTION_REQUEST, "0");
 constant!(PACKET_CONNECTION_RESPONSE_ACCEPTED, "1");
@@ -17,7 +17,7 @@ constant!(PACKET_MESSAGE, "5");
 pub struct DiscordState {
     hub_channel_id: String,
     tx: Sender<Msg>,
-    rx: Receiver<Msg>
+    rx: Receiver<Msg>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -27,14 +27,14 @@ pub enum MessageType {
     ConnectionRejected,
     Ping,
     Pong,
-    Message
+    Message,
 }
 
 #[derive(Debug, Clone)]
 pub struct Msg {
     pub message_type: MessageType,
     pub content: Option<String>,
-    pub sender: String
+    pub sender: String,
 }
 
 struct DiscordHandler;
@@ -50,7 +50,7 @@ impl EventHandler for DiscordHandler {
 
         if let Some(state) = write.get_mut::<DiscordState>() {
             if msg.channel_id.to_string() != state.hub_channel_id {
-               return;
+                return;
             }
 
             let message = msg.content.splitn(3, ' ');
@@ -65,19 +65,51 @@ impl EventHandler for DiscordHandler {
 
             match out[1] {
                 PACKET_CONNECTION_REQUEST => {
-                    state.tx.send(Msg { message_type: MessageType::ConnectionRequest, content: None, sender: out[0].to_string() }).await.unwrap();
-                },
+                    state
+                        .tx
+                        .send(Msg {
+                            message_type: MessageType::ConnectionRequest,
+                            content: None,
+                            sender: out[0].to_string(),
+                        })
+                        .await
+                        .unwrap();
+                }
 
                 PACKET_CONNECTION_RESPONSE_ACCEPTED => {
-                    state.tx.send(Msg { message_type: MessageType::ConnectionAccepted, content: None, sender: out[0].to_string() }).await.unwrap();
-                },
+                    state
+                        .tx
+                        .send(Msg {
+                            message_type: MessageType::ConnectionAccepted,
+                            content: None,
+                            sender: out[0].to_string(),
+                        })
+                        .await
+                        .unwrap();
+                }
 
-                PACKET_CONNECTION_RESPONSE_REJECTED=> {
-                    state.tx.send(Msg { message_type: MessageType::ConnectionRejected, content: None, sender: out[0].to_string() }).await.unwrap();
-                },
+                PACKET_CONNECTION_RESPONSE_REJECTED => {
+                    state
+                        .tx
+                        .send(Msg {
+                            message_type: MessageType::ConnectionRejected,
+                            content: None,
+                            sender: out[0].to_string(),
+                        })
+                        .await
+                        .unwrap();
+                }
 
                 PACKET_MESSAGE => {
-                    state.tx.send(Msg { message_type: MessageType::Message, content: Some(out[2].to_string()), sender: out[0].to_string() }).await.unwrap();
+                    state
+                        .tx
+                        .send(Msg {
+                            message_type: MessageType::Message,
+                            content: Some(out[2].to_string()),
+                            sender: out[0].to_string(),
+                        })
+                        .await
+                        .unwrap();
                 }
 
                 _ => {}
@@ -95,32 +127,92 @@ impl EventHandler for DiscordHandler {
             let rx = state.rx.clone();
 
             tokio::spawn(async move {
-                let channel = ctx.http.get_channel(channel_id.parse().unwrap()).await.unwrap();
+                let channel = ctx
+                    .http
+                    .get_channel(channel_id.parse().unwrap())
+                    .await
+                    .unwrap();
 
                 while let Ok(data) = rx.recv().await {
                     match data.message_type {
                         MessageType::ConnectionRequest => {
-                            channel.id().say(&ctx.http, format!("{} {} {}", data.sender, PACKET_CONNECTION_REQUEST, data.content.unwrap())).await.unwrap();
-                        },
+                            channel
+                                .id()
+                                .say(
+                                    &ctx.http,
+                                    format!(
+                                        "{} {} {}",
+                                        data.sender,
+                                        PACKET_CONNECTION_REQUEST,
+                                        data.content.unwrap()
+                                    ),
+                                )
+                                .await
+                                .unwrap();
+                        }
 
                         MessageType::ConnectionAccepted => {
-                            channel.id().say(&ctx.http, format!("{} {} {}", data.sender, PACKET_CONNECTION_RESPONSE_ACCEPTED, data.content.unwrap())).await.unwrap();
-                        },
+                            channel
+                                .id()
+                                .say(
+                                    &ctx.http,
+                                    format!(
+                                        "{} {} {}",
+                                        data.sender,
+                                        PACKET_CONNECTION_RESPONSE_ACCEPTED,
+                                        data.content.unwrap()
+                                    ),
+                                )
+                                .await
+                                .unwrap();
+                        }
 
                         MessageType::ConnectionRejected => {
-                            channel.id().say(&ctx.http, format!("{} {} {}", data.sender, PACKET_CONNECTION_RESPONSE_REJECTED, data.content.unwrap())).await.unwrap();
-                        },
+                            channel
+                                .id()
+                                .say(
+                                    &ctx.http,
+                                    format!(
+                                        "{} {} {}",
+                                        data.sender,
+                                        PACKET_CONNECTION_RESPONSE_REJECTED,
+                                        data.content.unwrap()
+                                    ),
+                                )
+                                .await
+                                .unwrap();
+                        }
 
                         MessageType::Ping => {
-                            channel.id().say(&ctx.http, format!("{} {}", data.sender, PACKET_PING)).await.unwrap();
+                            channel
+                                .id()
+                                .say(&ctx.http, format!("{} {}", data.sender, PACKET_PING))
+                                .await
+                                .unwrap();
                         }
 
                         MessageType::Pong => {
-                            channel.id().say(&ctx.http, format!("{} {}", data.sender, PACKET_PONG)).await.unwrap();
+                            channel
+                                .id()
+                                .say(&ctx.http, format!("{} {}", data.sender, PACKET_PONG))
+                                .await
+                                .unwrap();
                         }
 
                         MessageType::Message => {
-                            channel.id().say(&ctx.http, format!("{} {} {}", data.sender, PACKET_CONNECTION_REQUEST, data.content.unwrap())).await.unwrap();
+                            channel
+                                .id()
+                                .say(
+                                    &ctx.http,
+                                    format!(
+                                        "{} {} {}",
+                                        data.sender,
+                                        PACKET_CONNECTION_REQUEST,
+                                        data.content.unwrap()
+                                    ),
+                                )
+                                .await
+                                .unwrap();
                         }
                     }
                 }
@@ -129,14 +221,21 @@ impl EventHandler for DiscordHandler {
     }
 }
 
-pub async fn new_discord_protocol(token: String, hub_channel_id: String, tx: Sender<Msg>, rx: Receiver<Msg>) -> Result<Client> {
+pub async fn new_discord_protocol(
+    token: String,
+    hub_channel_id: String,
+    tx: Sender<Msg>,
+    rx: Receiver<Msg>,
+) -> Result<Client> {
     let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
-    let client = Client::builder(&token, intents).event_handler(DiscordHandler).await?;
+    let client = Client::builder(&token, intents)
+        .event_handler(DiscordHandler)
+        .await?;
 
-    let discord =  DiscordState {
+    let discord = DiscordState {
         hub_channel_id,
         tx,
-        rx
+        rx,
     };
     let mut data = client.data.write().await;
 
