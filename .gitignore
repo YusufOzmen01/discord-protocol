@@ -1,7 +1,2 @@
-/protocol/target/
-/protocol/Cargo.lock
-
-/demo/target/
-/demo/Cargo.lock
-
+/target
 .idea
