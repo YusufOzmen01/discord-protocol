@@ -44,11 +44,11 @@ impl P2P {
         Ok(())
     }
 
-    pub async fn get_id(&self) -> String {
+    pub fn get_id(&self) -> String {
         self.id.to_string()
     }
 
-    pub async fn disconnect(&mut self) -> Result<()> {
+    pub fn disconnect(&mut self) -> Result<()> {
         if self.other_end.is_none() {
             return Err(format_err!("You are not connected to someone!"))
         }

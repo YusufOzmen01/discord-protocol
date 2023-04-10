@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
 
     let mut p2p = P2P::new(env::var("TOKEN")?, env::var("CHANNEL_ID")?);
 
-    println!("YOUR ID: {}", p2p.get_id().await);
+    println!("YOUR ID: {}", p2p.get_id());
 
     let stdin = stdin();
     print!("Target ID: ");
