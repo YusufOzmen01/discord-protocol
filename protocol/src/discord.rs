@@ -1,11 +1,9 @@
-use std::sync::Arc;
 use serenity::{async_trait, Client};
 use serenity::prelude::{Context, EventHandler, GatewayIntents, TypeMapKey};
 use color_eyre::Result;
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::Message;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{Mutex};
+use async_channel::{Receiver, Sender};
 use crate::constant;
 
 constant!(PACKET_CONNECTION_REQUEST, "0");
@@ -18,8 +16,8 @@ constant!(PACKET_MESSAGE, "5");
 #[derive(Clone)]
 pub struct DiscordState {
     hub_channel_id: String,
-    tx: Arc<Sender<Msg>>,
-    rx: Arc<Mutex<Receiver<Msg>>>
+    tx: Sender<Msg>,
+    rx: Receiver<Msg>
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -97,11 +95,9 @@ impl EventHandler for DiscordHandler {
             let rx = state.rx.clone();
 
             tokio::spawn(async move {
-                let mut rx = rx.lock().await;
-
                 let channel = ctx.http.get_channel(channel_id.parse().unwrap()).await.unwrap();
 
-                while let Some(data) = rx.recv().await {
+                while let Ok(data) = rx.recv().await {
                     match data.message_type {
                         MessageType::ConnectionRequest => {
                             channel.id().say(&ctx.http, format!("{} {} {}", data.sender, PACKET_CONNECTION_REQUEST, data.content.unwrap())).await.unwrap();
@@ -133,7 +129,7 @@ impl EventHandler for DiscordHandler {
     }
 }
 
-pub async fn new_discord_protocol(token: String, hub_channel_id: String, tx: Arc<Sender<Msg>>, rx: Arc<Mutex<Receiver<Msg>>>) -> Result<Client> {
+pub async fn new_discord_protocol(token: String, hub_channel_id: String, tx: Sender<Msg>, rx: Receiver<Msg>) -> Result<Client> {
     let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
     let client = Client::builder(&token, intents).event_handler(DiscordHandler).await?;
 

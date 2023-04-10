@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-channel = "1.8.0"
 color-eyre = "0.6.2"
-crossbeam = "0.8.2"
 rand = "0.8.5"
 serenity = { version = "*", default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
 tokio = { version = "1.27.0", features = ["full"] }
